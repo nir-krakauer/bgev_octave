@@ -14,12 +14,12 @@
 ## this program; if not, see <http://www.gnu.org/licenses/>.
 
 ## -*- texinfo -*-
-## @deftypefn  {@var{y} =} bgevpdf (@var{x}, @var{k}, @var{sigma}, @var{mu}, @var{p_a}, @var{p_b}, @var{s})
+## @deftypefn  {@var{y} =} bgevnll (@var{x}, @var{k}, @var{sigma}, @var{mu}, @var{p_a}, @var{p_b}, @var{s})
 ##
-## Blended generalized extreme value (bGEV) probability density function (PDF).
+## Blended generalized extreme value (bGEV) negative log likelihoods.
 ##
-## For each element of @var{x}, compute the probability density function (PDF)
-## of the bGEV distribution with shape parameter @var{k}, scale parameter
+## For each element of @var{x}, compute the negative log likelihood
+## under the bGEV distribution with shape parameter @var{k}, scale parameter
 ## @var{sigma}, location parameter @var{mu}, and blending parameters starting quantile @var{p_a}, 
 ## ending quantile @var{p_b}, and beta-distribution shape parameter @var{s}.
 ##
@@ -30,14 +30,17 @@
 ## The size of @var{y} is the common size of the parameters.  A scalar input
 ## functions as a constant matrix of the same size as the other inputs.
 ##
+## The result should be the same as @code{-log(bgevpdf(...))} with the same inputs, 
+## up to numerical error.
+##
 ## Uses gevinv, gevcdf, gevpdf, gumbelcdf, gumbelpdf, betapdf, betacdf from the Octave Statistics package.
 ##
 ## Reference: Castro‐Camilo, D.; Huser, R. & Rue, H. (2022), Practical strategies for generalized extreme value‐based regression models for extremes, Environmetrics, 33, doi: 10.1002/env.2742
 ##
-## @seealso{bgevcdf, bgevinv, gevpdf}
+## @seealso{bgevpdf}
 ## @end deftypefn
 
-function y = bgevpdf (x, k, sigma, mu, p_a, p_b, s)
+function y = bgevnll (x, k, sigma, mu, p_a, p_b, s)
 
   ## Check for valid number of input arguments
   if (nargin < 4)
@@ -79,11 +82,12 @@ function y = bgevpdf (x, k, sigma, mu, p_a, p_b, s)
   y = nan (size(x));
   
   if any(gumbel(:))  
-    y(gumbel) = gumbelpdf (x(gumbel), g_mu(gumbel), g_sigma(gumbel));
+    z = (x(gumbel) - g_mu(gumbel)) ./ g_sigma(gumbel);
+    y(gumbel) = z + exp(-z) + log(g_sigma(gumbel));
   endif
   
   if any(gev(:))
-    y(gev) = gevpdf (x(gev), k(gev), sigma(gev), mu(gev));
+    y(gev) = gevnll (x(gev), k(gev), sigma(gev), mu(gev));
   endif
   
   if any(mixing(:))
@@ -103,7 +107,7 @@ function y = bgevpdf (x, k, sigma, mu, p_a, p_b, s)
     term3 = pr_d .* exp(- (x - g_mu) ./ g_sigma);
     term4 = (1 - pr) ./ g_sigma .* exp(- (x - g_mu) ./ g_sigma);
     term0 = pr .* log(gevcdf(x, k, sigma, mu)) + (1 - pr) .* log(gumbelcdf(x, g_mu, g_sigma));    
-    y(mixing) = exp(term0) .* (term1 + term2 + term3 + term4);
+    y(mixing) = -(term0 + log(term1 + term2 + term3 + term4));
   endif
 
 endfunction
@@ -111,44 +115,24 @@ endfunction
 %!demo
 %! ## Plot various PDFs from the blended generalized extreme value distribution
 %! x = -1:0.001:10;
-%! y1 = bgevpdf (x, 1, 1, 1);
-%! y2 = bgevpdf (x, 0.5, 1, 1);
-%! y3 = bgevpdf (x, 1, 1, 5);
-%! y4 = bgevpdf (x, 1, 2, 5);
-%! y5 = bgevpdf (x, 1, 5, 5);
-%! y6 = bgevpdf (x, 1, 0.5, 5);
+%! y1 = bgevnll (x, 1, 1, 1);
+%! y2 = bgevnll (x, 0.5, 1, 1);
+%! y3 = bgevnll (x, 1, 1, 5);
+%! y4 = bgevnll (x, -1, 1, 1);
+%! y5 = bgevnll (x, -0.5, 1, 1);
+%! y6 = bgevnll (x, -1, 1, 5);
 %! plot (x, y1, "-b", x, y2, "-g", x, y3, "-r", ...
 %!       x, y4, "-c", x, y5, "-m", x, y6, "-k")
 %! grid on
 %! xlim ([-1, 10])
-%! ylim ([0, 1.1])
+%! ylim ([-10, 10])
 %! legend ({"k = 1, σ = 1, μ = 1", "k = 0.5, σ = 1, μ = 1", ...
-%!          "k = 1, σ = 1, μ = 5", "k = 1, σ = 2, μ = 5", ...
-%!          "k = 1, σ = 5, μ = 5", "k = 1, σ = 0.5, μ = 5"}, ...
-%!         "location", "northeast")
-%! title ("Blended generalized extreme value PDF")
+%!          "k = 1, σ = 1, μ = 5", "k = -1, σ = 1, μ = 1", ...
+%!          "k = -0.5, σ = 1, μ = 1", "k = -1, σ = 1, μ = 5"}, ...
+%!         "location", "southwest")
+%! title ("Blended generalized extreme value NLL")
 %! xlabel ("values in x")
-%! ylabel ("density")
-
-%{
-k = 0.5; sigma = 1; mu = 1;
-p_a = 0.05; p_b = 0.2;
-k = -0.5; sigma = 1; mu = 1;
-p_a = 0.95; p_b = 0.8;
-a = gevinv (p_a, k, sigma, mu);
-b = gevinv (p_b, k, sigma, mu);
-g_sigma = (b - a) ./ log(log(p_a) ./ log(p_b));
-g_mu = a + g_sigma .* log(-log(p_a));
-pf = @(x) bgevpdf (x, k, sigma, mu, p_a, p_b);
-integral(pf, a, b) #should equal p_b-p_a -- and it does
-x = mu + (-5:0.001:5)*sigma;
-yg = gumbelpdf (x, g_mu, g_sigma);
-yf = gevpdf (x, k, sigma, mu);
-yb = bgevpdf (x, k, sigma, mu, p_a, p_b);
-plot (x, yg, "-b", x, yf, "-g", x, yb, "-r")
-legend({"Gumbel", "Frechet", "blended"})
-ylabel ("probability density")
-%}
+%! ylabel ("negative log likelihood")
 
 ## Test output
 %!test
@@ -156,24 +140,24 @@ ylabel ("probability density")
 %! sigma = 1:6;
 %! k = 1;
 %! mu = 0;
-%! y = bgevpdf (x, k, sigma, mu);
-%! expected_y = [0.367879   0.143785   0.088569   0.063898   0.049953   0.040997];
+%! y = bgevnll (x, k, sigma, mu);
+%! expected_y = -log( bgevpdf (x, k, sigma, mu));
 %! assert (y, expected_y, 0.001);
 %!test
 %! x = -0.5:0.5:2.5;
 %! sigma = 0.5;
 %! k = 1;
 %! mu = 0;
-%! y = bgevpdf (x, k, sigma, mu);
-%! expected_y = [0.056109 0.735759   0.303265   0.159229   0.097350   0.065498   0.047027];
+%! y = bgevnll (x, k, sigma, mu);
+%! expected_y = -log( bgevpdf (x, k, sigma, mu));
 %! assert (y, expected_y, 0.001);
 %!test
 %! x = 1;
 %! sigma = 0.5;
 %! k = 0.01:0.01:0.03;
 %! mu = 0;
-%! y = bgevpdf (x, k, sigma, mu);
-%! expected_y = [0.23576   0.23508   0.23438];
+%! y = bgevnll (x, k, sigma, mu);
+%! expected_y = -log( bgevpdf (x, k, sigma, mu));
 %! assert (y, expected_y, 0.001);
 
 

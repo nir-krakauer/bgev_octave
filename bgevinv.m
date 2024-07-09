@@ -18,12 +18,13 @@
 ## Compute a desired quantile (inverse CDF) of the blended generalized extreme value (bGEV) distribution.
 ##
 ## For each element of @var{P}, compute that quantile
-## of the bGEV distribution with positive shape parameter @var{k}, scale parameter
+## of the bGEV distribution with shape parameter @var{k}, scale parameter
 ## @var{sigma}, location parameter @var{mu}, and blending parameters starting quantile @var{p_a}, 
 ## ending quantile @var{p_b}, and beta-distribution shape parameter @var{s}.
 ##
 ## If @var{p_a}, @var{p_b}, @var{s} are not given or empty, default values of 
-## @var{p_a}=0.05, @var{p_b}=0.2, @var{s}=5 are used.
+## @var{p_a}=0.05, @var{p_b}=0.2 for positive @var{k} (@var{p_a}=0.95, @var{p_b}=0.8 
+## for negative @var{k}), @var{s}=5 are used.
 ##
 ## The size of @var{X} is the common size of the parameters.  A scalar input
 ## functions as a constant matrix of the same size as the other inputs.
@@ -38,16 +39,27 @@
 ## Author: Nir Krakauer <nkrakauer@ccny.cuny.edu>
 ## Description: Inverse CDF of the generalized extreme value distribution
 
-function [X] = bgevinv (p, k = 0, sigma = 1, mu = 0, p_a = 0.05, p_b = 0.2, s = 5)
+function [X] = bgevinv (p, k, sigma, mu, p_a, p_b, s)
+
+  ## Set missing parameters to defaults
+  if (nargin < 5) || isempty(p_a)
+    p_a = 0.05 + (0.9 * (k < 0));
+  endif
+  if (nargin < 6) || isempty(p_b)
+    p_b = 0.2 + (0.6 * (k < 0));
+  endif  
+  if (nargin < 7) || isempty(s)
+    s = 5;
+  endif    
 
   [retval, p, k, sigma, mu, p_a, p_b, s] = common_size (p, k, sigma, mu, p_a, p_b, s);
   if (retval > 0)
     error ("bgevinv: inputs must be of common size or scalars");
   endif
 
-  gumbel = (p <= p_a);
-  frechet = (p >= p_b);
-  mixing = (p > p_a) & (p < p_b);
+  gumbel =  (k == 0) | ((p <= p_a) & (k > 0)) | ((p >= p_a) & (k < 0));
+  gev = ((p >= p_b) & (k > 0)) | ((p <= p_b) & (k < 0));
+  mixing = (k != 0) & (p > min(p_a, p_b)) & (p < max(p_a, p_b));
 
   X = nan (size(p));
 
@@ -61,8 +73,8 @@ function [X] = bgevinv (p, k = 0, sigma = 1, mu = 0, p_a = 0.05, p_b = 0.2, s = 
     X(gumbel) = gumbelinv (p(gumbel), g_mu(gumbel), g_sigma(gumbel));
   endif
 
-  if any(frechet(:))
-    X(frechet) = gevinv (p(frechet), k(frechet), sigma(frechet), mu(frechet));
+  if any(gev(:))
+    X(gev) = gevinv (p(gev), k(gev), sigma(gev), mu(gev));
   endif
     
   if any(mixing(:)) #no closed-form expression, but result is between the corresponding Frechet and Gumbel distributions
@@ -78,7 +90,7 @@ function [X] = bgevinv (p, k = 0, sigma = 1, mu = 0, p_a = 0.05, p_b = 0.2, s = 
     Xm = X(mixing); 
     
     x_gumbel = gumbelinv (p, g_mu, g_sigma);
-    x_frechet = gevinv (p, k, sigma, mu);
+    x_gev = gevinv (p, k, sigma, mu);
      
     n = numel (p);
     for i = 1:n
@@ -87,13 +99,34 @@ function [X] = bgevinv (p, k = 0, sigma = 1, mu = 0, p_a = 0.05, p_b = 0.2, s = 
         result = (gevcdf(x, k, sigma, mu) .^ pr) .* (gumbelcdf(x, g_mu, g_sigma) .^ (1 - pr));
       endfunction
       fun2 = @(x)  p_fun(x, k(i), sigma(i), mu(i), p_a(i), p_b(i), s(i), a(i), b(i), g_mu(i), g_sigma(i)) - p(i);
-      x_range = [x_gumbel(i) x_frechet(i)];
+      x_range = sort([x_gumbel(i) x_gev(i)]);
       Xm(i) = fzero (fun2, x_range);
     endfor
     X(mixing) = Xm;
   endif  
 
 endfunction
+
+%!demo
+%! ## Plot various iCDFs from the generalized extreme value distribution
+%! p = 0.001:0.001:0.999;
+%! x1 = bgevinv (p, 0, 1, 1, 0.95, 0.8);
+%! x2 = bgevinv (p, -0.2, 1, 1, 0.95, 0.8);
+%! x3 = bgevinv (p, -0.5, 1, 1, 0.95, 0.8);
+%! x4 = bgevinv (p, -0.8, 1, 1, 0.95, 0.8);
+%! x5 = bgevinv (p, -1.1, 1, 1, 0.95, 0.8);
+%! x6 = bgevinv (p, -1.5, 1, 1, 0.95, 0.8);
+%! plot (p, x1, "-b", p, x2, "-g", p, x3, "-r", ...
+%!       p, x4, "-c", p, x5, "-m", p, x6, "-k")
+%! ylim ([-10, 10])
+%! grid on
+%! legend ({"k = 0, σ = 1, μ = 1", "k = -0.2, σ = 1, μ = 1", ...
+%!          "k = -0.5, σ = 1, μ = 1", "k = -0.8, σ = 1, μ = 1", ...
+%!          "k = -1.1, σ = 1, μ = 1", "k = -1.5, σ = 1, μ = 1"}, ...
+%!         "location", "northwest")
+%! title ("Blended generalized extreme value iCDF")
+%! xlabel ("probability")
+%! ylabel ("values in x")
 
 %!demo
 %! ## Plot various iCDFs from the generalized extreme value distribution
@@ -143,4 +176,20 @@ endfunction
 %! c = bgevcdf(x, k, sigma, mu);
 %! assert (c, p, 0.001);
 
+%!test
+%! p = 0.1:0.1:0.9;
+%! k = -0.3;
+%! sigma = 1;
+%! mu = 0;
+%! x = bgevinv (p, k, sigma, mu, 0.95, 0.8);
+%! c = bgevcdf(x, k, sigma, mu, 0.95, 0.8);
+%! assert (c, p, 0.001);
 
+%!test
+%! p = 0.1:0.1:0.9;
+%! k = -1.3;
+%! sigma = 5;
+%! mu = 2;
+%! x = bgevinv (p, k, sigma, mu, 0.95, 0.8);
+%! c = bgevcdf(x, k, sigma, mu, 0.95, 0.8);
+%! assert (c, p, 0.001);

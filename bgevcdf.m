@@ -32,7 +32,8 @@
 ## computes the upper tail probability of the bGEV distribution with given parameters.
 ##
 ## If @var{p_a}, @var{p_b}, @var{s} are not given or empty, default values of 
-## @var{p_a}=0.05, @var{p_b}=0.2, @var{s}=5 are used.
+## @var{p_a}=0.05, @var{p_b}=0.2 for positive @var{k} (@var{p_a}=0.95, @var{p_b}=0.8 
+## for negative @var{k}), @var{s}=5 are used.
 ##
 ## The mean of the bGEV distribution is not finite when @qcode{@var{k} >= 1}, and
 ## the variance is not finite when @qcode{@var{k} >= 1/2}.  Unlike the GEV distribution
@@ -60,10 +61,10 @@ function p = bgevcdf (x, k, sigma, mu, p_a, p_b, s, uflag)
   
   ## Set missing parameters to defaults
   if (nargin < 5) || isempty(p_a)
-    p_a = 0.05;
+    p_a = 0.05 + (0.9 * (k < 0));
   endif
   if (nargin < 6) || isempty(p_b)
-    p_b = 0.2;
+    p_b = 0.2 + (0.6 * (k < 0));
   endif  
   if (nargin < 7) || isempty(s)
     s = 5;
@@ -107,7 +108,25 @@ function p = bgevcdf (x, k, sigma, mu, p_a, p_b, s, uflag)
 
 endfunction
 
-
+%!demo
+%! ## bGEV CDFs when the shape parameter is negative
+%! x = -5:0.001:5; p_a = 0.99; p_b = 0.95; s = 5;
+%! p1 = bgevcdf (x, 0, 1, 0, p_a, p_b, s);
+%! p2 = bgevcdf (x, -0.5, 1, 0, p_a, p_b, s);
+%! p3 = bgevcdf (x, -0.75, 1, 0, p_a, p_b, s);
+%! p4 = bgevcdf (x, -1, 1, 0, p_a, p_b, s);
+%! p5 = bgevcdf (x, -1.5, 1, 0, p_a, p_b, s);
+%! plot (x, p1, "-b", x, p2, "-g", x, p3, "-r", ...
+%!       x, p4, "-c", x, p5, "-m")
+%! grid on
+%! xlim ([-5, 5])
+%! legend ({"k = 0", "k = -0.5", ...
+%!          "k = -0.75", "k = -1", ...
+%!          "k = -1.5"}, ...
+%!         "location", "northwest")
+%! title ("Blended generalized extreme value CDF")
+%! xlabel ("values in x")
+%! ylabel ("probability")
 
 %!demo
 %! ## Plot various CDFs from the blended generalized extreme value distribution
