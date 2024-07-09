@@ -7,7 +7,10 @@ This repository contains the following Octave function files:
  - bgevpdf.m  bGEV probability density function (derivative of CDF).
  - bgevinv.m  bGEV quantile function (inverse of CDF).
  - bgevnll.m  bGEV negative log likelihood (negative log of the PDF)
- - begv_fit_demo.m application of bGEV to temperature extremes data
+
+As well as
+  
+ - begv_fit_demo.m  script with application of bGEV to temperature extremes data
  - begv_test_data.mat  data for bgev_fit_demo
 
 In order to use these functions, the Octave Statistics package is required.
