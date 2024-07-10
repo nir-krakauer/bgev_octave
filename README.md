@@ -15,5 +15,7 @@ As well as
 
 In order to use these functions, the Octave Statistics package is required.
 
-Reference:
-Castro‐Camilo, D.; Huser, R. & Rue, H. (2022), Practical strategies for generalized extreme value‐based regression models for extremes, Environmetrics, 33, doi: 10.1002/env.2742
+References:
+
+- Castro‐Camilo, D.; Huser, R. & Rue, H. (2022), Practical strategies for generalized extreme value‐based regression models for extremes, Environmetrics, 33, doi: 10.1002/env.2742
+- Krakauer, N.Y. (2024), Extending the blended generalized extreme value distribution, arXiv, 2407.06875, doi: 10.48550/arXiv.2407.06875
