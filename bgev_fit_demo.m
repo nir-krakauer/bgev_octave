@@ -87,7 +87,7 @@ save (file_out, 'fcst_q', 'fcst_nll', 'shape_params', 'nt_start', 'as', 'bs', 's
 plot_dir = 'plots/'
 
 
-plot(as, sum(sum(fcst_nll, 1), 2)(:)(2:end). '-s')
+plot(as, sum(sum(fcst_nll, 1), 2)(:)(2:end), '-s')
 xlabel('Blending quantile a')
 ylabel('Forecast NLL')
 print('-deps', [plot_dir 'a_NLL'])
