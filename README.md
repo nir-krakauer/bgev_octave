@@ -1,5 +1,5 @@
 # bgev_octave
-Octave implementation of the blended generalized extreme value (bGEV) distribution from Castro‐Camilo et al. 2022.
+Octave implementation of the blended generalized extreme value (bGEV) distribution from Castro‐Camilo et al. 2022, including the extension to positive shape parameter from Krakauer 2024.
 
 This repository contains the following Octave function files:
 
